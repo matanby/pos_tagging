@@ -1,0 +1,6 @@
+.idea
+*.pyc
+tmp
+ex2.pdf
+data_split.gz
+report
