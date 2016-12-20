@@ -44,10 +44,6 @@ def mle(X, Y, suppx, suppy):
     t = t / t.sum(axis=1)[:, None]
     e = e / e.sum(axis=1)[:, None]
 
-    # TODO: remove!
-    # t = t.clip(min=1e-12)
-    # e = e.clip(min=1e-12)
-
     return t, e
 
 
@@ -205,16 +201,10 @@ def perceptron(X, Y, suppx, suppy, phi, w0, rate, epochs=1, max_iters=2000):
         W = [W_epochs[-1]] if W_epochs else [w0]
 
         for i in xrange(iters):
-            # TODO: remove
-            if i % 100 == 0:
-                print 'i:', i
-
             X_i = X[i]
             Y_i = Y[i]
             ni = len(X_i)
             w = W[i].copy()
-            # TODO: remove!
-            # X_i_hat = viterbi2(Y_i, suppx, suppy, phi, w)
             X_i_hat = viterbi2(Y_i, suppx, suppy, phi, np.log(w))
 
             for t in xrange(ni):
@@ -239,8 +229,6 @@ def perceptron(X, Y, suppx, suppy, phi, w0, rate, epochs=1, max_iters=2000):
 
         W_epochs.append(sum(W) / N)
 
-    # TODO: remove!
-    # return W_epochs
     return np.log(W_epochs)
 
 
