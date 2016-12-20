@@ -14,11 +14,11 @@ def mle(X, Y, suppx, suppy):
     """
     Calculate the maximum likelihood estimators for the transition and
     emission distributions, in the multinomial HMM case.
-    : param x : an iterable over sequences of POS tags
-    : param y : a matching iterable over sequences of words
-    : param suppx : the possible values for x variables.
-    : param suppy : the possible values for y variables.
-    : return : a tuple (t, e), with:
+    :param X: an iterable over sequences of POS tags
+    :param Y: a matching iterable over sequences of words
+    :param suppx: the possible values for x variables.
+    :param suppy: the possible values for y variables.
+    :returns: a tuple (t, e), with:
     t.shape = (|val(X)|, |val(X)|), and
     e.shape = (|val(X)|, |val(Y)|)
     """
@@ -54,13 +54,13 @@ def mle(X, Y, suppx, suppy):
 def sample(Ns, suppx, suppy, t, e):
     """
     sample sequences from the model.
-    : param Ns : a vector with desired sample lengths, a sample is
+    :param Ns: a vector with desired sample lengths, a sample is
     generated per entry in the vector , with corresponding length.
-    : param suppx : the possible values for x variables, ordered as in t, and e
-    : param suppy : the possible values for y variables, ordered as in e
-    : param t : the transition distributions of the model
-    : param e : the emission distributions of the model
-    : return : x, y - two iterables describing the sampled sequences.
+    :param suppx: the possible values for x variables, ordered as in t, and e
+    :param suppy: the possible values for y variables, ordered as in e
+    :param t: the transition distributions of the model
+    :param e: the emission distributions of the model
+    :return: x, y - two iterables describing the sampled sequences.
     """
 
     suppx_range = range(len(suppx))
@@ -94,12 +94,12 @@ def sample(Ns, suppx, suppy, t, e):
 def viterbi(y, suppx, suppy, t, e):
     """
     Calculate the maximum a-posteriori assignment of x's.
-    : param y : a sequence of words
-    : param suppx : the support of x (what values it can attain)
-    : param suppy : the support of y (what values it can attain)
-    : param t : the transition distributions of the model
-    : param e : the emission distributions of the model
-    : return : xhat, the most likely sequence of hidden states (parts of speech).
+    :param y: a sequence of words
+    :param suppx: the support of x (what values it can attain)
+    :param suppy: the support of y (what values it can attain)
+    :param t: the transition distributions of the model.
+    :param e: the emission distributions of the model.
+    :return: xhat, the most likely sequence of hidden states (parts of speech).
     """
 
     K = len(suppx)
@@ -140,11 +140,12 @@ def viterbi(y, suppx, suppy, t, e):
 def viterbi2(y, suppx, suppy, phi, w):
     """
     Calculate the assignment of x that obtains the maximum log - linear score.
-    : param y : a sequence of words.
-    : param suppx : the support of x (what values it can attain).
-    : param phi : a mapping from (x_t, x_{t+1} , y_{1..t+1} to indices of w.
-    : param w : the linear model.
-    : return : xhat, the most likely sequence of hidden states (parts of speech).
+    :param y: a sequence of words.
+    :param suppx: the support of x (what values it can attain)
+    :param suppy: the support of y (what values it can attain)
+    :param phi: a mapping from (x_t, x_{t+1} , y_{1..t+1} to indices of w.
+    :param w: the linear model.
+    :return: xhat, the most likely sequence of hidden states (parts of speech).
     """
 
     K = len(suppx)
@@ -179,27 +180,31 @@ def viterbi2(y, suppx, suppy, phi, w):
     return xhat
 
 
-def perceptron(X, Y, suppx, suppy, phi, w0, rate, epochs=1):
+def perceptron(X, Y, suppx, suppy, phi, w0, rate, epochs=1, max_iters=2000):
     """
     Find w that maximizes the log - linear score
-    : param X : POS tags for sentences (iterable of lists of elements in suppx).
-    : param Y : words in respective sentences (iterable of lists of words in suppy).
-    : param suppx : the support of x (what values it can attain).
-    : param suppy : the support of y (what values it can attain).
-    : param phi : a mapping from (None | x_1 , x_2 , y_2 to indices of w.
-    : param w0 : initial model.
-    : param rate : rate of learning.
-    : return : w, a weight vector for the log - linear model features.
+    :param X: POS tags for sentences (iterable of lists of elements in suppx).
+    :param Y: words in respective sentences (iterable of lists of words in suppy).
+    :param suppx: the support of x (what values it can attain).
+    :param suppy: the support of y (what values it can attain).
+    :param phi: a mapping from (None | x_1 , x_2 , y_2 to indices of w.
+    :param w0: initial model.
+    :param rate: rate of learning.
+    :param epochs: The number of epochs (i.e. different iterations on the given data) to use.
+    :param max_iters: The maximum number of iterations to run.
+    :return: w, a weight vector for the log - linear model features.
     """
 
     N = len(X)
     pos_idx = {v: k for k, v in enumerate(suppx)}
     W_epochs = []
 
+    iters = min(N, max_iters)
+
     for epoch in xrange(epochs):
         W = [W_epochs[-1]] if W_epochs else [w0]
 
-        for i in xrange(N):
+        for i in xrange(iters):
             # TODO: remove
             if i % 100 == 0:
                 print 'i:', i
@@ -240,6 +245,15 @@ def perceptron(X, Y, suppx, suppy, phi, w0, rate, epochs=1):
 
 
 def phi_hmm(suppx, suppy, e, t):
+    """
+    Calculates and returns the log-linear feature map (phi) and
+    the weights vector (w) representing the HMM model, and the it
+    :param suppx: the support of x (what values it can attain)
+    :param suppy: the support of y (what values it can attain)
+    :param t: the transition distributions of the model.
+    :param e: the emission distributions of the model.
+    """
+
     K = len(suppx)
     T = len(suppy)
     words_idx = {v: k for k, v in enumerate(suppy)}
@@ -260,6 +274,15 @@ def phi_hmm(suppx, suppy, e, t):
 
 
 def phi_alt(suppx, suppy, current_feature=None):
+    """
+    Calculates and returns a log-linear feature map (phi) and
+    a weights vector (w) representing the HMM model extended
+    with additional features (as explained in the report).
+    :param suppx: the support of x (what values it can attain)
+    :param suppy: the support of y (what values it can attain)
+    :param current_feature: The index of the feature to use, or None to use all.
+    """
+
     K = len(suppx)
     T = len(suppy)
     words_idx = {v: k for k, v in enumerate(suppy)}
@@ -279,7 +302,7 @@ def phi_alt(suppx, suppy, current_feature=None):
         elif Y[t][-1:] not in suffix_idx_1:
             return -1
         else:
-            return (suffix_idx_1[Y[t][-1:]] + 1) * K + x_curr
+            return (suffix_idx_1[Y[t][-1:]]) * K + x_curr
 
     def suffix_2_leters(x_prev, x_curr, Y, t):
         if len(Y[t]) < 2:
@@ -287,7 +310,7 @@ def phi_alt(suppx, suppy, current_feature=None):
         elif Y[t][-2:] not in suffix_idx_2:
             return -1
         else:
-            return (suffix_idx_2[Y[t][-2:]] + 1) * K + x_curr
+            return (suffix_idx_2[Y[t][-2:]]) * K + x_curr
 
     def suffix_3_leters(x_prev, x_curr, Y, t):
         if len(Y[t]) < 3:
@@ -295,7 +318,7 @@ def phi_alt(suppx, suppy, current_feature=None):
         elif Y[t][-3:] not in suffix_idx_3:
             return -1
         else:
-            return (suffix_idx_3[Y[t][-3:]] + 1) * K + x_curr
+            return (suffix_idx_3[Y[t][-3:]]) * K + x_curr
 
     all_features = [
         # Transition

@@ -6,20 +6,21 @@ import time
 import numpy as np
 
 from ex2 import mle, sample, viterbi, viterbi2, perceptron, phi_hmm, phi_alt
-from helper_funcs import loss, get_data
-
-MAX_SENTENCES = 100
+from helper_funcs import loss, get_data, frange
 
 
 def test_mle():
+    """
+    Test the MLE function by measuring the log-likelihood
+    of the test data given the trained model.
+    """
+
     print '### TEST MLE ###'
 
-    _, X, _, Y, suppx, suppy = get_data(k=1, n=1)
+    _, X, _, Y, suppx, suppy = get_data(k=1, n=1, shuffle=True)
 
     N = len(X)
-    # TODO: keep or remove?
-    # for percentage in frange(0.1, 1, 0.05):
-    for percentage in [0.1, 0.25, 0.5, 0.9]:
+    for percentage in frange(0.1, 1, 0.05):
         train_count = int(N * percentage)
         test_count = int((N-train_count) * 0.1)
         x_train = X[:train_count]
@@ -33,6 +34,16 @@ def test_mle():
 
 
 def log_likelihood(X, Y, t, e, suppx, suppy):
+    """
+    Calculates and returns the log-likelihood of data, given an HMM model.
+    :param X: an iterable over sequences of POS tags
+    :param Y: a matching iterable over sequences of words
+    :param t: the transition distributions of the model
+    :param e: the emission distributions of the model
+    :param suppx: the possible values for x variables.
+    :param suppy: the possible values for y variables.
+    """
+
     K = len(suppx)
     N = len(X)
 
@@ -58,14 +69,20 @@ def log_likelihood(X, Y, t, e, suppx, suppy):
     return ll / N
 
 
-def test_sample(num_sentences=1000):
+def test_sample(num_sentences):
+    """
+    Tests the sample function by measuring the log-likelihood
+    of sampled data given an HMM model.
+    :param num_sentences: The number of sentences to use for the test.
+    """
+
     print '### TEST SAMPLE ###'
 
     MIN_LENGTH = 5
     MAX_LENGTH = 20
 
-    _, X, _, Y, suppx, suppy = get_data(k=1, n=1)
-    t, e = mle(X, Y, suppx, suppy)
+    _, x_train, _, y_train, suppx, suppy = get_data(k=1, n=1)
+    t, e = mle(x_train, y_train, suppx, suppy)
 
     Ns = np.random.randint(low=MIN_LENGTH, high=MAX_LENGTH, size=num_sentences)
     X_gen, Y_gen = sample(Ns, suppx, suppy, t, e)
@@ -74,13 +91,19 @@ def test_sample(num_sentences=1000):
     print 'log-likelihood of %d sampled instances: %.5f' % (num_sentences, ll)
 
 
-def test_viterbi(num_sentences=1000):
+def test_viterbi(num_sentences):
+    """
+    Tests the viterbi algorithm by sampling data, feeding it into the
+    viterbi algorithm, and measuring the loss.
+    :param num_sentences: The number of sentences to use for the test.
+    """
+
     print '### TEST VITERBI ###'
 
     MIN_LENGTH = 5
     MAX_LENGTH = 20
 
-    x_train, x_test, y_train, y_test, suppx, suppy = get_data(max_sentences=MAX_SENTENCES)
+    x_train, x_test, y_train, y_test, suppx, suppy = get_data()
     t, e = mle(x_train, y_train, suppx, suppy)
 
     Ns = np.random.randint(low=MIN_LENGTH, high=MAX_LENGTH, size=num_sentences)
@@ -94,7 +117,13 @@ def test_viterbi(num_sentences=1000):
     print 'viterbi loss with %d generated sentences: %f' % (num_sentences, sum(losses) / len(losses))
 
 
-def test_perceptron(num_sentences=1000):
+def test_perceptron(num_sentences):
+    """
+    Tests the Perceptron algorithm by running it with different
+    parameters and comparing the outputs.
+    :param num_sentences: The number of sentences to use for the test.
+    """
+
     print '### TEST PERCEPTRON ###'
 
     LEARN_RATE = 0.35
@@ -105,8 +134,8 @@ def test_perceptron(num_sentences=1000):
     phi, w = phi_hmm(suppx, suppy, e, t)
 
     params = [
-        # (np.zeros(w.shape), LEARN_RATE),
-        # (np.ones(w.shape), LEARN_RATE),
+        (np.zeros(w.shape), LEARN_RATE),
+        (np.ones(w.shape), LEARN_RATE),
         (np.zeros(w.shape) + 1e-12, LEARN_RATE),
     ]
 
@@ -115,7 +144,6 @@ def test_perceptron(num_sentences=1000):
     for idx, (w0, rate) in enumerate(params):
         print 'learning w: %d/%d' % (idx + 1, len(params))
         W_epochs = perceptron(x_train, y_train, suppx, suppy, phi, w0, rate)
-        # W_perc.append(w)
         W_perc.extend(W_epochs)
 
     for idx, w_perc in enumerate(W_perc):
@@ -128,38 +156,13 @@ def test_perceptron(num_sentences=1000):
         print 'loss: %.5f' % np.mean(losses)
 
 
-def test_models(num_sentences=1000):
-    print '### TEST MODELS ###'
+def compare_viterbi_viterbi2(num_sentences):
+    """
+    Compares the performance of the viterbi (HMM)
+    and viterbi2 (log-linear) algorithms.
+    :param num_sentences: The number of sentences to use for the test.
+    """
 
-    PERC_LEARN_RATE = 0.35
-    PERC_EPOCHS = 1
-
-    x_train, x_test, y_train, y_test, suppx, suppy = get_data(max_sentences=num_sentences)
-    t, e = mle(x_train, y_train, suppx, suppy)
-
-    models = [
-        ('HMM', phi_hmm(suppx, suppy, e, t)),
-        ('HMM Perceptron', phi_hmm(suppx, suppy, e, t)),
-        ('Alternative', phi_alt(suppx, suppy))
-    ]
-
-    for name, (phi, w0) in models:
-        if name == 'HMM':
-            w = w0
-        elif name == 'HMM Perceptron':
-            w = perceptron(x_train, y_train, suppx, suppy, phi, np.zeros(w0.shape) + 1e-12, PERC_LEARN_RATE, PERC_EPOCHS)[-1]
-        else:
-            w = perceptron(x_train, y_train, suppx, suppy, phi, w0, PERC_LEARN_RATE, PERC_EPOCHS)[-1]
-
-        losses = []
-        for x, y in zip(x_test, y_test):
-            x_hat = viterbi2(y, suppx, suppy, phi, w)
-            losses.append(loss(x, x_hat))
-
-        print 'model: %s, Loss: %.5f' % (name, np.mean(losses))
-
-
-def compare_viterbi_viterbi2(num_sentences=1000):
     print '### COMPARE VITERBI WITH VITERBI2 ###'
 
     x_train, x_test, y_train, y_test, suppx, suppy = get_data(max_sentences=num_sentences)
@@ -174,11 +177,54 @@ def compare_viterbi_viterbi2(num_sentences=1000):
         viterbi_loss.append(loss(x, x_hat1))
         viterbi2_loss.append(loss(x, x_hat2))
 
-    print 'viterbi Loss: %.5f' % np.mean(viterbi_loss)
-    print 'viterbi2 Loss: %.5f' % np.mean(viterbi2_loss)
+    print 'viterbi loss: %.5f' % np.mean(viterbi_loss)
+    print 'viterbi2 loss: %.5f' % np.mean(viterbi2_loss)
 
 
-def test_features(num_sentences=1000):
+def test_models(num_sentences):
+    """
+    Compares the performance of the HMM model and our alternative model.
+    :param num_sentences: The number of sentences to use for the test.
+    """
+
+    print '### TEST MODELS ###'
+
+    PERC_LEARN_RATE = 0.35
+    PERC_EPOCHS = 1
+
+    x_train, x_test, y_train, y_test, suppx, suppy = get_data(max_sentences=num_sentences)
+    t, e = mle(x_train, y_train, suppx, suppy)
+
+    models = [
+        ('HMM', phi_hmm(suppx, suppy, e, t)),
+        ('HMM Perceptron', phi_hmm(suppx, suppy, e, t)),
+        ('Alternative', phi_alt(suppx, suppy))
+    ]
+
+    for model_name, (phi, w0) in models:
+        print 'model: %s' % model_name,
+
+        if model_name == 'HMM':
+            w = w0
+        elif model_name == 'HMM Perceptron':
+            w = perceptron(x_train, y_train, suppx, suppy, phi, np.zeros(w0.shape) + 1e-12, PERC_LEARN_RATE, PERC_EPOCHS)[-1]
+        else:
+            w = perceptron(x_train, y_train, suppx, suppy, phi, w0, PERC_LEARN_RATE, PERC_EPOCHS)[-1]
+
+        losses = []
+        for x, y in zip(x_test, y_test):
+            x_hat = viterbi2(y, suppx, suppy, phi, w)
+            losses.append(loss(x, x_hat))
+
+        print 'loss: %.5f' % np.mean(losses)
+
+
+def test_features(num_sentences):
+    """
+    Compares the importance of each feature for the purpose of POS tagging.
+    :param num_sentences: The number of sentences to use for the test.
+    """
+
     print '### TEST FEATURES ###'
 
     PERC_LEARN_RATE = 0.35
@@ -187,19 +233,20 @@ def test_features(num_sentences=1000):
     x_train, x_test, y_train, y_test, suppx, suppy = get_data(max_sentences=num_sentences)
 
     features_names = [
-        "# Is digit?",
-        "# Is uppercase?",
-        "# Is first word?",
-        "# Is last word?",
-        "# suffix of one letters",
-        "# suffix of two letters",
-        "# suffix of three letters",
-        "# after special words"
+        "Is digit?",
+        "Is uppercase?",
+        "Is first word?",
+        "Is last word?",
+        "Suffix of one letters",
+        "Suffix of two letters",
+        "Suffix of three letters",
+        "After special words"
     ]
 
     models = [phi_alt(suppx, suppy, i+2) for i in xrange(len(features_names))]
 
-    for name, (phi, w0) in zip(features_names,models):
+    for model_name, (phi, w0) in zip(features_names, models):
+        print 'feature: %s' % model_name,
         w = perceptron(x_train, y_train, suppx, suppy, phi, w0, PERC_LEARN_RATE, PERC_EPOCHS)[-1]
 
         losses = []
@@ -207,20 +254,19 @@ def test_features(num_sentences=1000):
             x_hat = viterbi2(y, suppx, suppy, phi, w)
             losses.append(loss(x, x_hat))
 
-        print 'Model: %s, Loss: %.5f' % (name, np.mean(losses))
+        print 'loss: %.5f' % np.mean(losses)
 
 
 def main():
-    random.seed(1)
     start_time = time.time()
 
-    # test_mle()
-    # test_sample(num_sentences=100)
-    # compare_viterbi_viterbi2(num_sentences=100)
-    # test_viterbi(num_sentences=1000)
-    # test_perceptron(num_sentences=100)
-    test_models(num_sentences=100)
-    test_features(num_sentences=100)
+    test_mle()
+    test_sample(num_sentences=1000)
+    test_viterbi(num_sentences=1000)
+    test_perceptron(num_sentences=1000)
+    compare_viterbi_viterbi2(num_sentences=1000)
+    test_models(num_sentences=1000)
+    test_features(num_sentences=2000)
 
     total_duration = time.time() - start_time
     print 'total run duration: %.5f seconds' % total_duration
