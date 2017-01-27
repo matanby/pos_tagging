@@ -5,7 +5,7 @@ import time
 
 import numpy as np
 
-from ex2 import mle, sample, viterbi, viterbi2, perceptron, phi_hmm, phi_alt
+from pos_tagging import mle, sample, viterbi, viterbi2, perceptron, phi_hmm, phi_alt
 from helper_funcs import loss, get_data, frange
 
 
